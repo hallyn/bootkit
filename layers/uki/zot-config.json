@@ -1,0 +1,14 @@
+{
+  "distSpecVersion": "1.0.1-dev",
+  "storage": {
+    "rootDirectory": "/zot-cache",
+    "gc": false
+  },
+  "http": {
+    "address": "localhost",
+    "port": "5000"
+  },
+  "log": {
+    "level": "error"
+  }
+}

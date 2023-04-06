@@ -64,6 +64,27 @@ try_modules() {
     }
 }
 
+
+wait_on_zot() {
+	count=5
+	up=0
+	while [[ $count -gt 0 ]]; do
+		if [ ! -d /proc/$pid ]; then
+			echo "zot failed to start or died"
+			exit 1
+		fi
+		up=1
+		curl -f http://$ZOT_HOST:$ZOT_PORT/v2/ || up=0
+		if [ $up -eq 1 ]; then break; fi
+		sleep 1
+		count=$((count - 1))
+	done
+	if [ $up -eq 0 ]; then
+		echo "Timed out waiting for zot"
+		exit 1
+	fi
+}
+
 soci_udev_settled() {
     ${SOCI_ENABLED} || return 0
     # if SOCI_dev is set, wait for it.
@@ -106,12 +127,20 @@ soci_udev_settled() {
             soci_die "could not create directories: '$lower', '$upper', '$work'"
         }
 
+        echo "Starting a zot service"
+
+        mkdir -p /zot-cache
+        zot serve /etc/zot-config.json &
+        zot_pid=$!
+        wait_on_zot
+
         [ "$SOCI_DEBUG" = "true" ] && debug="--debug"
-        set -- mosctl $debug soci mount \
-            "--capath=/manifestCA.pem" \
-            "--repo-base=oci:$dmp/$path" \
-            "--metalayer=$name" \
-            "--mountpoint=$lower"
+        mkdir -p /factory/secure
+        chmod 700 /factory/secure
+        cp /manifestCA.pem /factory/secure/
+        set -- mosctl $debug mount \
+            "--target=127.0.0.1:5000/machine/livecd:1.0.0" \
+            "--dest=$lower"
 
         if soci_log_run "$@"; then
             soci_info "successfully ran: $*"
