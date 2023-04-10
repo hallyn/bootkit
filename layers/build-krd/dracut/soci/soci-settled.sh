@@ -146,8 +146,9 @@ soci_udev_settled() {
 
         mkdir -p /config # TODO we shouldn't need this, but do for manifest.lock
         set -- mosctl $debug mount \
-            "--target=${repo}/$name" \
-            "--dest=$lower"
+            "--target=livecd" \
+            "--dest=$lower" \
+            "${repo}/$name"
 
         if soci_log_run "$@"; then
             soci_info "successfully ran: $*"
