@@ -69,18 +69,19 @@ wait_on_zot() {
 	count=5
 	up=0
 	while [[ $count -gt 0 ]]; do
+		count=$((count - 1))
+        soci_debug "Waiting on zot: $count/5"
 		if [ ! -d /proc/$pid ]; then
-			echo "zot failed to start or died"
+			soci_die "zot failed to start or died"
 			exit 1
 		fi
 		up=1
-		curl -f http://$ZOT_HOST:$ZOT_PORT/v2/ || up=0
+		soci_log_run curl -f http://$ZOT_HOST:$ZOT_PORT/v2/ || up=0
 		if [ $up -eq 1 ]; then break; fi
 		sleep 1
-		count=$((count - 1))
 	done
 	if [ $up -eq 0 ]; then
-		echo "Timed out waiting for zot"
+		soci_die "Timed out waiting for zot"
 		exit 1
 	fi
 }
@@ -127,9 +128,8 @@ soci_udev_settled() {
             soci_die "could not create directories: '$lower', '$upper', '$work'"
         }
 
-        echo "Starting a zot service"
+        soci_debug "Starting a zot service"
 
-        mkdir -p /zot-cache
         zot serve /etc/zot-config.json &
         zot_pid=$!
         wait_on_zot
