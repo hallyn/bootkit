@@ -1,7 +1,7 @@
 {
   "distSpecVersion": "1.0.1-dev",
   "storage": {
-    "rootDirectory": "/zot-cache",
+    "rootDirectory": "/oci",
     "gc": false
   },
   "http": {

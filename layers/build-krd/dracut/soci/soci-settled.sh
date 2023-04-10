@@ -128,18 +128,25 @@ soci_udev_settled() {
             soci_die "could not create directories: '$lower', '$upper', '$work'"
         }
 
-        soci_debug "Starting a zot service"
-
-        zot serve /etc/zot-config.json &
-        zot_pid=$!
-        wait_on_zot
+        if [ -n "$repo" -a "$repo" = "local" ]; then
+            # our zot config expects to find its cache under /oci
+            mkdir -p /oci
+            mount --bind "${dmp}" /oci
+            soci_debug "Starting a zot service"
+            zot serve /etc/zot-config.json &
+            zot_pid=$!
+            wait_on_zot
+            export repo="127.0.0.1:5000"
+        fi
 
         [ "$SOCI_DEBUG" = "true" ] && debug="--debug"
         mkdir -p /factory/secure
         chmod 700 /factory/secure
         cp /manifestCA.pem /factory/secure/
+
+        mkdir -p /config # TODO we shouldn't need this, but do for manifest.lock
         set -- mosctl $debug mount \
-            "--target=127.0.0.1:5000/machine/livecd:1.0.0" \
+            "--target=${repo}/$name" \
             "--dest=$lower"
 
         if soci_log_run "$@"; then
