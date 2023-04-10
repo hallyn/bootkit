@@ -76,7 +76,7 @@ wait_on_zot() {
 			exit 1
 		fi
 		up=1
-		soci_log_run curl -f http://$ZOT_HOST:$ZOT_PORT/v2/ || up=0
+		soci_log_run curl -f http://127.0.0.1:5000/v2/ || up=0
 		if [ $up -eq 1 ]; then break; fi
 		sleep 1
 	done
@@ -89,7 +89,7 @@ wait_on_zot() {
 soci_udev_settled() {
     ${SOCI_ENABLED} || return 0
     # if SOCI_dev is set, wait for it.
-    local dev="${SOCI_dev}" path="${SOCI_path}" name="${SOCI_name}" devpath=""
+    local dev="${SOCI_dev}" path="${SOCI_path}" name="${SOCI_name}" devpath="" repo="${SOCI_repo}"
 
     short2dev "$dev"
     devpath="$_RET"

@@ -27,6 +27,8 @@ install() {
     # these are required to make LABEL= work well.
     inst "/lib/udev/cdrom_id"
     inst "/lib/udev/rules.d/60-cdrom_id.rules"
+    inst mknod
+    inst curl
 
     return 0
 }
