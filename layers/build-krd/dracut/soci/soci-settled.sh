@@ -86,6 +86,27 @@ wait_on_zot() {
 	fi
 }
 
+start_zot() {
+    cat > /etc/systemd/system/soci-zot.service << EOF
+[Unit]
+Description=Start zot for soci mount
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/zot serve /etc/zot-config.json
+StandardInput=tty-force
+StandardOutput=inherit
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl enable soci-zot.service
+    systemctl start soci-zot.service
+    wait_on_zot
+}
+
 soci_udev_settled() {
     ${SOCI_ENABLED} || return 0
     # if SOCI_dev is set, wait for it.
@@ -131,11 +152,9 @@ soci_udev_settled() {
         if [ -n "$repo" -a "$repo" = "local" ]; then
             # our zot config expects to find its cache under /oci
             mkdir -p /oci
-            mount --bind "${dmp}" /oci
+            mount --bind "${dmp}/oci" /oci
             soci_debug "Starting a zot service"
-            zot serve /etc/zot-config.json &
-            zot_pid=$!
-            wait_on_zot
+            start_zot
             export repo="127.0.0.1:5000"
         fi
 
@@ -144,7 +163,8 @@ soci_udev_settled() {
         chmod 700 /factory/secure
         cp /manifestCA.pem /factory/secure/
 
-        mkdir -p /config # TODO we shouldn't need this, but do for manifest.lock
+        mkdir -p /config /scratch-writes /atomfs-store
+        find /oci
         set -- mosctl $debug mount \
             "--target=livecd" \
             "--dest=$lower" \
@@ -153,7 +173,15 @@ soci_udev_settled() {
         if soci_log_run "$@"; then
             soci_info "successfully ran: $*"
         else
-            soci_die "extract-soci '$name' '$rootd' failed with exit code $?"
+            ret=$?
+            out=$(curl http://127.0.0.1:5000/v2/_catalog)
+            soci_info "catalog: ${out}"
+            out=$(curl http://127.0.0.1:5000/v2/machine/livecd/tags/list)
+            soci_info "tags: ${out}"
+            out=$(curl http://127.0.0.1:5000/v2/machine/livecd/manifests/1.0.0)
+            soci_info "manifest: ${out}"
+            soci_info "log: $(</run/initramfs/log)"
+            soci_die "extract-soci '$name' '$rootd' failed with exit code $ret"
             return 1
         fi
         soci_log_run mount -t overlay \

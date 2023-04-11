@@ -29,6 +29,8 @@ install() {
     inst "/lib/udev/rules.d/60-cdrom_id.rules"
     inst mknod
     inst curl
+    inst chmod
+    inst find  # for debug
 
     return 0
 }
