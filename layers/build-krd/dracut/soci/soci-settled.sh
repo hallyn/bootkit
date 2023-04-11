@@ -167,7 +167,7 @@ soci_udev_settled() {
         find /oci
         set -- mosctl $debug mount \
             "--target=livecd" \
-            "--dest=$lower" \
+            "--dest=$rootd" \
             "${repo}/$name"
 
         if soci_log_run "$@"; then
@@ -184,11 +184,11 @@ soci_udev_settled() {
             soci_die "extract-soci '$name' '$rootd' failed with exit code $ret"
             return 1
         fi
-        soci_log_run mount -t overlay \
-            -o "lowerdir=$lower,upperdir=$upper,workdir=$work" soci-rootfs "$rootd" || {
-            soci_die "overlay mount failed"
-            return 1
-        }
+
+        soci_log_run cat /proc/self/mounts
+        soci_log_run cat /proc/modules
+        soci_log_run stat /sysroot
+        soci_log_run ls -l $lower
 
         try_modules "$dmp/krd/modules.squashfs" "$rootd" || {
             soci_die "Failed mounting modules"
