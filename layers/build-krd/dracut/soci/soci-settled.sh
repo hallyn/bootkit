@@ -222,6 +222,11 @@ soci_udev_settled() {
                soci_info "Preinstall completed"
                ;;
             provision)
+               keytype=$(</keytype)
+               if [ "$keytype" != "limited" ]; then
+                   soci_die "Provisioning ISO was not signed with limited key"
+                   return 1
+               fi
                # XXX note this is still not alright - provisioning
                # iso should be limited-signed, not production-signed.
                soci_info "Provisioning iso, proceeding"

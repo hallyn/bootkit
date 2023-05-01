@@ -57,6 +57,14 @@ uki-build:
 
     create-cpio "$keyworkd" "$initrd_d/keys.cpio.gz"
 
+    limitedd="$d/limited"
+    prodd="$d/production"
+    mkdir -p "${limitedd}"
+    mkdir -p "${prodd}"
+    echo "production" > "${prodd}/keytype"
+    echo "limited" > "${limitedd}/keytype"
+    create-cpio "${prodd}" "$initrd_d/trust-keytype.cpio.gz"
+
     initrd="$d/initrd.cpio.gz"
     # smash initrds together
     ( set +x;
@@ -69,6 +77,21 @@ uki-build:
       done  |
         pigz --to-stdout
     ) > "$initrd"
+
+    rm "$initrd_d/trust-keytype.cpio.gz"
+    create-cpio "${limitedd}" "$initrd_d/trust-keytype.cpio.gz"
+
+    initrd_limited="$d/initrd-limited.cpio.gz"
+    ( set +x;
+      for f in "${initrd_d}"/*.cpio*; do
+        echo "adding $f" 1>&2
+        case "$f" in
+          *.gz) pigz --decompress --to-stdout "$f" || exit;;
+          *) cat "$f" || exit;;
+        esac
+      done  |
+        pigz --to-stdout
+    ) > "$initrd_limited"
 
     # smash and sign.
     # Build in an empty command line.
@@ -104,6 +127,25 @@ uki-build:
         "--key=$keydir/uki-production/privkey.pem" \
         "--output=$d/uki/kernel.efi" "$d/kernel.efi"
     chmod 644 "$d/uki/kernel.efi"
+
+    cp "$initrd_limited" "$d/uki"
+    objcopy \
+        "--add-section=.cmdline=$cmdlinef" \
+        "--change-section-vma=.cmdline=0x30000" \
+        "--change-section-vma=.sbat=0x50000" \
+        "--add-section=.sbat=$sbatf" \
+        "--set-section-alignment=.sbat=512" \
+        "--add-section=.linux=$kernel" \
+        "--change-section-vma=.linux=0x2000000" \
+        "--add-section=.initrd=$initrd_limited" \
+        "--change-section-vma=.initrd=0x3000000" \
+        "$stubefi" "$d/kernel-limited.efi"
+
+    sbsign \
+        "--cert=$keydir/uki-limited/cert.pem" \
+        "--key=$keydir/uki-limited/privkey.pem" \
+        "--output=$d/uki/kernel-limited.efi" "$d/kernel-limited.efi"
+    chmod 644 "$d/uki/kernel-limited.efi"
 
     mkdir /export
     tar -C "$d" -cf /export/uki.tar uki
